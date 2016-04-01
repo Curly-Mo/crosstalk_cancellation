@@ -5,7 +5,6 @@ Mostly the core dsp tools collected from librosa, but with fewer dependencies
 """
 import os
 import warnings
-import wave
 
 import audioread
 import numpy as np
@@ -109,28 +108,21 @@ def write_wav(path, y, sr, norm=True):
         norm : boolean [scalar]
             enable amplitude normalization
     """
+    # Validate the buffer.  Stereo is okay here.
     valid_audio(y, mono=False)
     # Normalize
     if norm:
-        y = normalize(y, norm=np.inf, axis=None)
-    # Check for stereo
-    if y.ndim > 1 and y.shape[0] == 2:
-        n_channels = 2
-        y = y.T
+        y = y / np.max(np.abs(y))
     else:
-        n_channels = 1
-    # Convert ndarray to int
-    n_bytes = 2
-    y = buf_to_int(y, n_bytes)
+        y = y
+    # Convert to 16bit int
+    wav = buf_to_int(y)
+    # Check for stereo
+    if wav.ndim > 1 and wav.shape[0] == 2:
+        wav = wav.T
     # Save
-    with wave.open(path, 'w') as outfile:
-        outfile.setparams((n_channels, n_bytes, sr, 0, 'NONE', 'not compressed'))
-        if n_channels > 1:
-            for l, r in y:
-                outfile.writeframes(l)
-                outfile.writeframes(r)
-        else:
-            outfile.writeframes(y)
+    from scipy.io import wavfile
+    wavfile.write(path, sr, wav)
 
 
 def to_mono(y):
