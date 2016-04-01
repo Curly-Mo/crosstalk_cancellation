@@ -126,7 +126,6 @@ def write_wav(path, y, sr, norm=True):
     with wave.open(path, 'w') as outfile:
         outfile.setparams((n_channels, n_bytes, sr, 0, 'NONE', 'not compressed'))
         if n_channels > 1:
-            print(y.shape)
             for l, r in y:
                 outfile.writeframes(l)
                 outfile.writeframes(r)
