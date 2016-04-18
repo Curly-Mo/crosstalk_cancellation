@@ -390,6 +390,8 @@ def sum_signals(signals):
     Sum together a list of mono signals
     append zeros to match the longest array
     """
+    if not signals:
+        return np.array([])
     max_length = max(len(sig) for sig in signals)
     y = np.zeros(max_length)
     for sig in signals:
