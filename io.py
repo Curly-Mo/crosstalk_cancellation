@@ -360,3 +360,57 @@ def normalize(S, norm=np.inf, axis=0):
     length[length < SMALL_FLOAT] = 1.0
 
     return S / length
+
+
+def delay(y, time, sr):
+    """
+    Prepend zeros to delay signal by time seconds
+    Upsample, delay, then resample if delay is a fractional # of samples
+    """
+    sampletime = time * sr
+    decimals = sum(c != '0' for c in str(round(sampletime % 1, 4))[2:])
+    new_sr = None
+    if decimals > 0:
+        new_sr = sr * (decimals + 1)
+        sampletime = time * new_sr
+        y = resample(y, sr, new_sr)
+    y = np.pad(
+        y,
+        pad_width=[round(sampletime), 0],
+        mode='constant',
+        constant_values=0
+    )
+    if new_sr:
+        y = resample(y, new_sr, sr)
+    return y
+
+
+def sum_signals(signals):
+    """
+    Sum together a list of mono signals
+    append zeros to match the longest array
+    """
+    max_length = max(len(sig) for sig in signals)
+    y = np.zeros(max_length)
+    for sig in signals:
+        padded = np.zeros(max_length)
+        padded[0:len(sig)] = sig
+        y += padded
+    return y
+
+
+def channel_merge(channels):
+    """
+    vstack a list of mono signals
+    append zeros to match the longest signal
+    """
+    longest = max(len(channel) for channel in channels)
+    padded_channels = []
+    for i, channel in enumerate(channels):
+        if len(channel) < longest:
+            padded = np.zeros(longest)
+            padded[0:len(channel)] = channel
+            channel = padded
+        padded_channels.append(channel)
+    y = np.vstack(padded_channels)
+    return y
