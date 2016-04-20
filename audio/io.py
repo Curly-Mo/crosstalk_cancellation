@@ -387,8 +387,11 @@ def fractional_delay(y, time, sr, mode='conv'):
     else:
         ref = np.max(np.abs(y))
         f, i = math.modf(samples)
-        y = delay(y, i, sr, mode='samples')
+        # integer delay
+        y = delay(y, i)
+        # linear interpolation for fractional part
         y = np.convolve(y, [f, i-f], "same")
+        # normalize back go original max value
         y = y * ref / np.max(np.abs(y))
     return y
 
