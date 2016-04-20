@@ -39,8 +39,7 @@ def process_file(audio_path, output, spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
 
     y = audio.channel_merge([left, right])
     logger.info('Writing output to: {}'.format(output))
-    y = audio.resample(y, sr, 44100)
-    audio.write_wav(output, y, 44100, norm=True)
+    audio.write_wav(output, y, sr, norm=True)
 
 
 def cancel_crosstalk(signal, d1, d2, headshadow, sr):
@@ -60,7 +59,7 @@ def cancel_crosstalk(signal, d1, d2, headshadow, sr):
     return ipsilateral, contralateral
 
 
-def recursive_cancel(sig, ref, time, attenuation, headshadow, sr, threshold_db=-60):
+def recursive_cancel(sig, ref, time, attenuation, headshadow, sr, threshold_db=-70):
     # delay and invert
     cancel_sig = invert(audio.fractional_delay(sig, time, sr))
     # apply headshadow filter (lowpass based on theta)
@@ -70,7 +69,7 @@ def recursive_cancel(sig, ref, time, attenuation, headshadow, sr, threshold_db=-
 
     # Recurse until rms db is below threshold
     db = 20 * math.log10(np.max(np.abs(cancel_sig)) / ref)
-    logger.debug(db)
+    logger.debug('{} dB'.format(db))
     if db < threshold_db:
         return cancel_sig
     else:
