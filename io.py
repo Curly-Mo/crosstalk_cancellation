@@ -373,15 +373,15 @@ def fractional_delay(y, time, sr, mode='conv'):
     if isinstance(samples, int) or samples.is_integer():
         return delay(y, samples)
 
-    if mode = 'upsample':
+    if mode == 'upsample':
         # fractional delay by upsampling
-        decimals = sum(c != '0' for c in str(round(N % 1, 4))[2:])
+        decimals = sum(c != '0' for c in str(round(samples % 1, 4))[2:])
         new_sr = None
         if decimals > 0:
             new_sr = sr * (decimals + 1)
             samples = time * new_sr
             y = resample(y, sr, new_sr)
-        y = delay(y, N)
+        y = delay(y, samples)
         if new_sr:
             y = resample(y, new_sr, sr)
     else:
