@@ -5,6 +5,7 @@ Mostly the core dsp tools collected from librosa, but with fewer dependencies
 """
 import os
 import warnings
+import math
 
 import audioread
 import numpy as np
@@ -362,26 +363,45 @@ def normalize(S, norm=np.inf, axis=0):
     return S / length
 
 
-def delay(y, time, sr):
+def fractional_delay(y, time, sr):
     """
     Prepend zeros to delay signal by time seconds
-    Upsample, delay, then resample if delay is a fractional # of samples
+    Use linear interpolation through convolution for fractional delay
     """
-    sampletime = time * sr
-    decimals = sum(c != '0' for c in str(round(sampletime % 1, 4))[2:])
-    new_sr = None
-    if decimals > 0:
-        new_sr = sr * (decimals + 1)
-        sampletime = time * new_sr
-        y = resample(y, sr, new_sr)
+    samples = time * sr
+    if isinstance(samples, int) or samples.is_integer():
+        return delay(y, time, sr)
+
+    f, i = math.modf(samples)
+    y = delay(y, i, sr, mode='samples')
+    import scipy.signal
+    y = scipy.signal.convolve(y, [f, i-f], "same")
+    return y
+
+
+def delay(y, time, sr, mode='time'):
+    """
+    Prepend zeros to delay signal by time seconds
+    """
+    if mode == 'time':
+        samples = time * sr
+    else:
+        samples = time
+    # fractional delay by upsampling has been commented out for now
+    #decimals = sum(c != '0' for c in str(round(samples % 1, 4))[2:])
+    #new_sr = None
+    #if decimals > 0:
+    #    new_sr = sr * (decimals + 1)
+    #    samples = time * new_sr
+    #    y = resample(y, sr, new_sr)
     y = np.pad(
         y,
-        pad_width=[round(sampletime), 0],
+        pad_width=[round(samples), 0],
         mode='constant',
         constant_values=0
     )
-    if new_sr:
-        y = resample(y, new_sr, sr)
+    #if new_sr:
+    #    y = resample(y, new_sr, sr)
     return y
 
 
