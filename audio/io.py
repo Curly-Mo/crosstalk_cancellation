@@ -113,7 +113,8 @@ def write_wav(path, y, sr, norm=True):
     valid_audio(y, mono=False)
     # Normalize
     if norm:
-        y = y / np.max(np.abs(y))
+        headroom = 0.00003
+        y = y / (np.max(np.abs(y)) + headroom)
     else:
         y = y
     # Convert to 16bit int
