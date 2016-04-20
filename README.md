@@ -3,6 +3,8 @@ Apply crosstalk cancellation to a binaural audio file
 
 
 example usage:  
+
+
     python crosstalk_cancellation.py input/audiocheck.wav output/audiocheck.wav  
 
     
@@ -10,9 +12,7 @@ example usage:
     python crosstalk_cancellation.py input/audiocheck.wav output/audiocheck.wav -s 0.8 -l 1.5 -e 0.215 
 
 
-usage: crosstalk_cancellation.py [-h] [-s SPKR_TO_SPKR] [-l LSTNR_TO_SPKR]  
-                                 [-e EAR_TO_EAR] [-v]  
-                                 audio_path output_path  
+usage: crosstalk_cancellation.py [-h] [-s SPKR_TO_SPKR] [-l LSTNR_TO_SPKR] [-e EAR_TO_EAR] [-v] audio_path output_path 
 
 positional arguments:
   audio_path            Path to input audio file  
