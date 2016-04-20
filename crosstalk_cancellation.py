@@ -4,6 +4,7 @@ import math
 import logging
 
 import numpy as np
+import scipy.signal
 
 import audio
 
@@ -14,50 +15,83 @@ def process_file(audio_path, output, spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
     """
     Read stereo binaural audio file and write wav file with crosstalk 'removed'
     """
-    y, sr = audio.load(audio_path, mono=False)
+    logger.info('Loading file into memory: {}'.format(audio_path))
+    y, sr = audio.load(audio_path, mono=False, sr=44100)
     left = y[0]
     right = y[1]
 
-    d1, d2 = compute_distances(spkr_to_spkr, lstnr_to_spkr, ear_to_ear)
-    logger.debug(d1)
-    logger.debug(d2)
-    l_left, l_right = cancel_crosstalk(left, d1, d2, sr)
-    r_right, r_left = cancel_crosstalk(left, d1, d2, sr)
+    logger.info('Computing distance from speaker to each ear')
+    d1, d2, theta = compute_geometry(spkr_to_spkr, lstnr_to_spkr, ear_to_ear)
+    logger.debug('d1: {}'.format(d1))
+    logger.debug('d2: {}'.format(d2))
+    logger.debug('theta: {}'.format(theta))
+
+    headshadow = headshadow_filter_coefficients(theta, ear_to_ear/2, sr)
+    logger.debug('headshadow b: {} a: {}'.format(*headshadow))
+
+    logger.info('Computing recursive crosstalk cancellation for left channel')
+    l_left, l_right = cancel_crosstalk(left, d1, d2, headshadow, sr)
+    logger.info('Computing recursive crosstalk cancellation for right channel')
+    r_right, r_left = cancel_crosstalk(left, d1, d2, headshadow, sr)
+
     left = audio.sum_signals([l_left, r_left, left])
     right = audio.sum_signals([l_right, r_right, right])
 
     y = audio.channel_merge([left, right])
-    audio.write_wav(output, y, sr, norm=False)
+    logger.info('Writing output to: {}'.format(output))
+    y = audio.resample(y, sr, 44100)
+    audio.write_wav(output, y, 44100, norm=True)
 
 
-def cancel_crosstalk(signal, d1, d2, sr):
+def cancel_crosstalk(signal, d1, d2, headshadow, sr):
     c = 343.2
     delta_d = abs(d2 - d1)
-    logger.debug(delta_d)
+    logger.debug('delta_d: {}'.format(delta_d))
     time_delay = delta_d / c
     attenuation = (d1) / (d2)
-    ref = np.max(signal)
-    logger.debug(attenuation)
-    cancel_sigs = recursive_cancel(signal, ref, time_delay, attenuation, sr)
+    # Reference max amplitude
+    ref = np.max(np.abs(signal))
+    logger.debug('attenuation factor: {}'.format(attenuation))
+    logger.debug('delay amount: {}'.format(time_delay))
+    cancel_sigs = recursive_cancel(signal, ref, time_delay, attenuation, headshadow, sr)
     cancel_sigs = list(cancel_sigs)
     contralateral = audio.sum_signals(cancel_sigs[0::2])
     ipsilateral = audio.sum_signals(cancel_sigs[1::2])
     return ipsilateral, contralateral
 
 
-def recursive_cancel(sig, ref, time, attenuation, sr, threshold_db=-10):
-    cancel = invert(audio.delay(sig, time, sr)) * attenuation
+def recursive_cancel(sig, ref, time, attenuation, headshadow, sr, threshold_db=-60):
+    # delay and invert
+    cancel_sig = invert(audio.fractional_delay(sig, time, sr))
+    # apply headshadow filter (lowpass based on theta)
+    cancel_sig = scipy.signal.filtfilt(*headshadow, cancel_sig)
+    # attenuate
+    cancel_sig = cancel_sig * attenuation
 
-    db = 20 * math.log10(np.max(cancel) / ref)
+    # Recurse until rms db is below threshold
+    db = 20 * math.log10(np.max(np.abs(cancel_sig)) / ref)
     logger.debug(db)
     if db < threshold_db:
-        return cancel
+        return cancel_sig
     else:
-        yield cancel
-        yield from recursive_cancel(cancel, ref, time, attenuation, sr)
+        yield cancel_sig
+        yield from recursive_cancel(cancel_sig, ref, time, attenuation, headshadow, sr)
 
 
-def compute_distances(spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
+def headshadow_filter_coefficients(theta, r, sr):
+    theta = theta + math.pi/2
+    theta0 = 2.618
+    alpha_min = 0.5
+    c = 343.2
+    w0 = c / r
+    alpha = 1 + alpha_min/2 + (1-alpha_min/2)*math.cos(theta*math.pi/theta0)
+    b = [(alpha+w0/sr)/(1+w0/sr), (-alpha+w0/sr)/(1+w0/sr)]
+    a = [1, -(1-w0/sr)/(1+w0/sr)]
+    return b, a
+
+
+
+def compute_geometry(spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
     S = spkr_to_spkr / 2
     L = lstnr_to_spkr
     r = ear_to_ear / 2
@@ -66,7 +100,14 @@ def compute_distances(spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
     d1 = math.sqrt(L**2 + (S-r)**2)
     d2 = d1 + delta_d
 
-    return d1, d2
+    # angle from center of head to speaker (used for computing headshadow)
+    theta = math.atan(S / L)
+
+    return d1, d2, theta
+
+
+def rms(sig):
+    return np.sqrt(np.mean(sig**2))
 
 
 def invert(x):
