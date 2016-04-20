@@ -364,47 +364,47 @@ def normalize(S, norm=np.inf, axis=0):
     return S / length
 
 
-def fractional_delay(y, time, sr):
+def fractional_delay(y, time, sr, mode='conv'):
     """
     Prepend zeros to delay signal by time seconds
     Use linear interpolation through convolution for fractional delay
     """
     samples = time * sr
     if isinstance(samples, int) or samples.is_integer():
-        return delay(y, time, sr)
+        return delay(y, samples)
 
-    ref = np.max(np.abs(y))
-    f, i = math.modf(samples)
-    y = delay(y, i, sr, mode='samples')
-    import scipy.signal
-    y = scipy.signal.convolve(y, [f, i-f], "same")
-    y = y / ref
+    if mode = 'upsample':
+        # fractional delay by upsampling
+        decimals = sum(c != '0' for c in str(round(N % 1, 4))[2:])
+        new_sr = None
+        if decimals > 0:
+            new_sr = sr * (decimals + 1)
+            samples = time * new_sr
+            y = resample(y, sr, new_sr)
+        y = delay(y, N)
+        if new_sr:
+            y = resample(y, new_sr, sr)
+    else:
+        ref = np.max(np.abs(y))
+        f, i = math.modf(samples)
+        y = delay(y, i, sr, mode='samples')
+        y = np.convolve(y, [f, i-f], "same")
+        y = y * ref / np.max(np.abs(y))
     return y
 
 
-def delay(y, time, sr, mode='time'):
+def delay(y, N, sr=None):
     """
-    Prepend zeros to delay signal by time seconds
+    Prepend zeros to delay signal by N samples (or N seconds if sr provided)
     """
-    if mode == 'time':
-        samples = time * sr
-    else:
-        samples = time
-    # fractional delay by upsampling has been commented out for now
-    #decimals = sum(c != '0' for c in str(round(samples % 1, 4))[2:])
-    #new_sr = None
-    #if decimals > 0:
-    #    new_sr = sr * (decimals + 1)
-    #    samples = time * new_sr
-    #    y = resample(y, sr, new_sr)
+    if sr:
+        N = N * sr
     y = np.pad(
         y,
-        pad_width=[round(samples), 0],
+        pad_width=[round(N), 0],
         mode='constant',
         constant_values=0
     )
-    #if new_sr:
-    #    y = resample(y, new_sr, sr)
     return y
 
 
