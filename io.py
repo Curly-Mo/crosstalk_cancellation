@@ -373,10 +373,12 @@ def fractional_delay(y, time, sr):
     if isinstance(samples, int) or samples.is_integer():
         return delay(y, time, sr)
 
+    ref = np.max(np.abs(y))
     f, i = math.modf(samples)
     y = delay(y, i, sr, mode='samples')
     import scipy.signal
     y = scipy.signal.convolve(y, [f, i-f], "same")
+    y = y / ref
     return y
 
 
