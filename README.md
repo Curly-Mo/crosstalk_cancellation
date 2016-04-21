@@ -1,6 +1,13 @@
 # Crosstalk Cancellation
 Apply crosstalk cancellation to a binaural audio file  
 
+processed files located in ./output directory have been optimised for laptop speakers 12 inches apart
+
+more processed files can be found here: https://drive.google.com/folderview?id=0B4eZRD35Nc1fUnM4SkQ1bTNxUkk&usp=sharing
+
+
+
+
 
 example usage:  
 
@@ -8,7 +15,7 @@ example usage:
     python crosstalk_cancellation.py input/audiocheck.wav output/audiocheck.wav  
 
     
-    #if your speakers are 0.8 meters apart, you are sitting 1.5 meters from the speakers, and have a head diamter of 0.215 meters  
+    #if your speakers are 0.8 meters apart, you are sitting 1.5 meters from the speakers, and have a head diameter of 0.215 meters  
     python crosstalk_cancellation.py input/audiocheck.wav output/audiocheck.wav -s 0.8 -l 1.5 -e 0.215 
 
 

@@ -32,7 +32,7 @@ def process_file(audio_path, output, spkr_to_spkr, lstnr_to_spkr, ear_to_ear):
     logger.info('Computing recursive crosstalk cancellation for left channel')
     l_left, l_right = cancel_crosstalk(left, d1, d2, headshadow, sr)
     logger.info('Computing recursive crosstalk cancellation for right channel')
-    r_right, r_left = cancel_crosstalk(left, d1, d2, headshadow, sr)
+    r_right, r_left = cancel_crosstalk(right, d1, d2, headshadow, sr)
 
     left = audio.sum_signals([l_left, r_left, left])
     right = audio.sum_signals([l_right, r_right, right])
